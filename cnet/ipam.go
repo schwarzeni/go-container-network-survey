@@ -1,4 +1,4 @@
-package container
+package cnet
 
 import (
 	"encoding/json"
