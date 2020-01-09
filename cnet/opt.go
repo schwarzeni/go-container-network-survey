@@ -5,6 +5,7 @@ import (
 	"go-container-network-survey/container"
 	"log"
 	"net"
+	"strings"
 )
 
 var (
@@ -100,10 +101,16 @@ func Connect(networkName string, cinfo *container.Info) (err error) {
 		return fmt.Errorf("No such network: %s", networkName)
 	}
 
+	// 创建网络端点信息
+	_, subnet, _ := net.ParseCIDR(network.IPRange.String())
+	fmt.Println(subnet)
 	// 从网络的IP端中分配容器的IP地址
-	if ip, err = ipAllocator.Allocate(network.IPRange); err != nil {
-		return fmt.Errorf("failed to allocate ip from range %v : %v", *network.IPRange, err)
+	if ip, err = ipAllocator.Allocate(subnet); err != nil {
+		return fmt.Errorf("failed to allocate ip from range %v : %v", subnet, err)
 	}
+	// if ip, err = ipAllocator.Allocate(network.IPRange); err != nil {
+	// return fmt.Errorf("failed to allocate ip from range %v : %v", *network.IPRange, err)
+	// }
 
 	// 创建网络端点信息
 	ep := &EndPoint{
@@ -131,10 +138,38 @@ func Connect(networkName string, cinfo *container.Info) (err error) {
 	if err = configPortMapping(ep, cinfo, ADD); err != nil {
 		return fmt.Errorf("Config port mapping %s failed, %v", cinfo.PortMapping, err)
 	}
+
+	// TODO: 修复此处的 magic code，重构记录容器ip地址的代码！！！！！
+	cinfo.IP = ip.String() + "/" + strings.Split(subnet.String(), "/")[1] // 记录一下容器的 IP 信息
 	return
 }
 
 // DisConnect 断开容器到之前创建的网络
 func DisConnect(networkName string, cinfo *container.Info) (err error) {
+	var (
+		network *Network
+		ok      bool
+	)
+	// 从 networks 数组中取到网络的配置信息
+	if network, ok = networks[networkName]; !ok {
+		return fmt.Errorf("No such network: %s", networkName)
+	}
+	// 创建网络端点信息
+	cip, subnet, _ := net.ParseCIDR(cinfo.IP)
+	ep := &EndPoint{
+		ID:          fmt.Sprintf("%s-%s", cinfo.ID, networkName),
+		IPAddress:   cip,
+		Network:     network,
+		PortMapping: cinfo.PortMapping}
+
+	// 删除 iptables 上的相关信息
+	if err = configPortMapping(ep, cinfo, DEL); err != nil {
+		return fmt.Errorf("Config port mapping %s failed, %v", cinfo.PortMapping, err)
+	}
+
+	fmt.Println("DisConnect", cinfo.IP)
+	if err = ipAllocator.Release(subnet, &cip); err != nil {
+		return fmt.Errorf("failed to Release ip from range %v : %v", *network.IPRange, err)
+	}
 	return
 }

@@ -141,8 +141,9 @@ func configPortMapping(ep *EndPoint, cinfo *container.Info, action iptablesActio
 		// -t nat -A PREROUTING -p tcp --dport 8088 -j DNAT --to 175.18.0.2:80
 		// -t filter -A FORWARD -d 175.18.0.2/32 ! -i ns_br -o ns_br -p tcp -m tcp --dport 80 -j ACCEPT
 		cmds := []string{
-			fmt.Sprintf("-t nat %s PREROUTING -p tcp --dport %s -j DNAT --to %s:%s", action, portMapping[0], ep.IPAddress.String(), portMapping[2]),
-			fmt.Sprintf("-t filter %s FORWARD -d %s ! -i %s -o %s -p tcp -m tcp --dport %s -j ACCEPT", action, ep.Network.IPRange.String(), ep.Network.Name, ep.Network.Name, portMapping[2])}
+			fmt.Sprintf("-t nat %s PREROUTING -p tcp --dport %s -j DNAT --to %s:%s", action, portMapping[0], ep.IPAddress.String(), portMapping[1]),
+			// fmt.Sprintf("-t filter %s FORWARD -d %s ! -i %s -o %s -p tcp -m tcp --dport %s -j ACCEPT", action, ep.Network.IPRange.String(), ep.Network.Name, ep.Network.Name, portMapping[1])}
+			fmt.Sprintf("-t filter %s FORWARD -d %s ! -i %s -o %s -p tcp -m tcp --dport %s -j ACCEPT", action, ep.IPAddress.String(), ep.Network.Name, ep.Network.Name, portMapping[1])}
 
 		for _, c := range cmds {
 			cmd := exec.Command("iptables", strings.Split(c, " ")...)

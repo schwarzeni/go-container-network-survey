@@ -12,7 +12,10 @@ import (
 
 func childProcess() {
 
-	syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, "")
+	if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
+		fmt.Fprintf(os.Stderr, "mount / error %v", err)
+		return
+	}
 
 	if err := syscall.Mount("proc", "/proc", "proc", syscall.MS_NOEXEC|syscall.MS_NOSUID|syscall.MS_NODEV, ""); err != nil {
 		fmt.Fprintf(os.Stderr, "mount proc error %v", err)

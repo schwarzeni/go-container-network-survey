@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -35,9 +36,13 @@ func main() {
 		}
 		return
 	}
+	// -run <id> <network_name> <host:dst>
 	var (
 		cmd           *exec.Cmd
 		containerInfo = container.Info{}
+		containerID   = os.Args[2]
+		networkName   = os.Args[3]
+		PortMapping   = os.Args[4]
 	)
 	cmd = exec.Command("/proc/self/exe", "exec")
 	cmd.Stdin = os.Stdin
@@ -57,10 +62,17 @@ func main() {
 
 	// 传递一些参数到克隆出的子进程中
 	containerInfo.PID = strconv.Itoa(cmd.Process.Pid)
-	containerInfo.ID = "2233"
-	containerInfo.Port = "8089"
+	containerInfo.ID = containerID
+	containerInfo.Port = strings.Split(PortMapping, ":")[1]
+	containerInfo.PortMapping = []string{PortMapping}
+
+	if err := cnet.Connect(networkName, &containerInfo); err != nil {
+		log.Fatal(err)
+	}
+
 	byteInfo, _ := json.Marshal(&containerInfo)
 	_, _ = w.Write(byteInfo)
+	// 从这里开始启动容器内的 web 服务
 	_ = w.Close()
 
 	// 处理退出的情况
@@ -70,6 +82,7 @@ func main() {
 	select {
 	case <-ch:
 		fmt.Printf("[ID: %s]shutdown process %s ...", containerInfo.ID, containerInfo.PID)
+		cnet.DisConnect(networkName, &containerInfo)
 	}
 
 	if err := cmd.Wait(); err != nil {
