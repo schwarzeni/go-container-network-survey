@@ -3,18 +3,86 @@ package cnet
 import (
 	"fmt"
 	"go-container-network-survey/container"
+	"log"
 	"net"
 )
 
 var (
-	drivers  = map[string]NetworkDriver{}
-	networks = map[string]*Network{}
+	drivers                 = map[string]NetworkDriver{}
+	networks                = map[string]*Network{}
+	defaultNetworksSavePath = "/var/run/mydocker/network/networks.json"
 )
 
-func init() {}
+func init() {
+	// 载入所有网络的信息 networks
+	var (
+		err      error
+		notExist bool
+	)
+	if notExist, err = loadJSON(&networks, defaultNetworksSavePath); err != nil {
+		log.Fatal(err)
+	}
+	if notExist {
+		networks = map[string]*Network{}
+	}
 
-// CreateNetwork 创建网络
+	// 载入所有驱动的信息 drivers
+	var bridgeDriver = BridgeNetDriver{}
+	drivers[bridgeDriver.Name()] = &bridgeDriver
+}
+
+// CreateNetwork 创建网络（网桥）
 func CreateNetwork(driver, subnet, name string) (err error) {
+	// 解析网址
+	gw, cidr, _ := net.ParseCIDR(subnet) // 默认输入合法
+
+	// 查看网桥是否存在
+	if n, ok := networks[name]; ok == true || (ok == true && n.IPRange.IP.Equal(gw)) {
+		return fmt.Errorf("network already exists %s : %s", name, subnet)
+	}
+
+	// 查看驱动是否存在
+	if _, ok := drivers[driver]; ok == false {
+		return fmt.Errorf("driver %s not found", driver)
+	}
+
+	if gw, err = ipAllocator.Allocate(cidr); err != nil {
+		return fmt.Errorf("allocate ip %s failed: %v", cidr, err)
+	}
+	cidr.IP = gw
+
+	// 创建网桥
+	var newNetwork *Network
+	if newNetwork, err = drivers[driver].Create(cidr.String(), name); err != nil {
+		return err
+	}
+
+	// 记录相关信息
+	networks[newNetwork.Name] = newNetwork
+	err = dumpJSON(networks, defaultNetworksSavePath)
+	return
+}
+
+// DeleteNetwork 删除网络（网桥）
+// 未考虑的事项：删除网络的时候需要检验是否还存在连接在其上的其他ip
+func DeleteNetwork(networkName string) (err error) {
+	var (
+		nw *Network
+		ok bool
+	)
+	if nw, ok = networks[networkName]; !ok {
+		return fmt.Errorf("no such network %s", networkName)
+	}
+	// WARN: 注意，这里书中有一个bug，不能直接传 nw.IPRange , 这不是网络的范围
+	_, ipnet, _ := net.ParseCIDR(nw.IPRange.String())
+	if err = ipAllocator.Release(ipnet, &nw.IPRange.IP); err != nil {
+		return fmt.Errorf("Error remove network gateway ip %v : %v", &nw.IPRange.IP, err)
+	}
+	if err = drivers[nw.Driver].Delete(*nw); err != nil {
+		return fmt.Errorf("Error remove network drivererror: %v", err)
+	}
+	delete(networks, networkName)
+	err = dumpJSON(networks, defaultNetworksSavePath)
 	return
 }
 
@@ -63,5 +131,10 @@ func Connect(networkName string, cinfo *container.Info) (err error) {
 	if err = configPortMapping(ep, cinfo, ADD); err != nil {
 		return fmt.Errorf("Config port mapping %s failed, %v", cinfo.PortMapping, err)
 	}
+	return
+}
+
+// DisConnect 断开容器到之前创建的网络
+func DisConnect(networkName string, cinfo *container.Info) (err error) {
 	return
 }

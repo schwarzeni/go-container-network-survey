@@ -12,7 +12,7 @@ type BridgeNetDriver struct{}
 
 // Name 驱动名称
 func (driver *BridgeNetDriver) Name() (name string) {
-	return "bridge network driver"
+	return "bridge"
 }
 
 // Create 创建网络
@@ -40,7 +40,7 @@ func (driver *BridgeNetDriver) Create(subnet string, name string) (n *Network, e
 }
 
 // Delete 删除网络
-func (driver *BridgeNetDriver) Delete(network *Network) (err error) {
+func (driver *BridgeNetDriver) Delete(network Network) (err error) {
 	var (
 		br         netlink.Link
 		bridgeName = network.Name

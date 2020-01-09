@@ -93,3 +93,19 @@ func TestReadFile_WriteFile(t *testing.T) {
 		}
 	}
 }
+
+func TestAllocate(t *testing.T) {
+	_, ipnet, _ := net.ParseCIDR("192.168.0.0/24")
+	// _, ipnet, _ := net.ParseCIDR("175.20.0.0/24")
+	if ip, err := ipAllocator.Allocate(ipnet); err != nil {
+		t.Errorf("%v", err)
+	} else {
+		t.Logf("allocate ip %v", ip)
+	}
+}
+
+func TestRelase(t *testing.T) {
+	ip, ipnet, _ := net.ParseCIDR("192.168.0.1/24")
+	// ip, ipnet, _ := net.ParseCIDR("175.20.0.1/24")
+	ipAllocator.Release(ipnet, &ip)
+}
