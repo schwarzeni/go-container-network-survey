@@ -40,3 +40,7 @@ iptables -t nat -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -p tcp -
 iptables -t filter -A FORWARD -d 175.18.0.3/32 ! -i ns_br -o ns_br -p tcp -m tcp --dport 80 -j ACCEPT
 
 # optional for ping : iptables -t filter -A FORWARD -o ns_br -j ACCEPT
+
+# start web server in namespace
+# ip netns exec ns1 ./static_server.sh 80
+# ip netns exec ns2 ./static_server.sh 80

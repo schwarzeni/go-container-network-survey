@@ -219,4 +219,6 @@ func() {
 
 ---
 
-当然还有一些小技巧，比如使用在 [main.go](./main.go) 中使用 Linux 管道来传递数据、同步消息，相关的技巧在作者之前的文章 [Linux 管道代码样例(一)](https://blog.schwarzeni.com/2019/12/22/Linux-%E7%AE%A1%E9%81%93%E4%BB%A3%E7%A0%81%E6%A0%B7%E4%BE%8B-%E4%B8%80/#Go%E8%AF%AD%E8%A8%80%E4%BD%BF%E7%94%A8%E7%AE%A1%E9%81%93) 中提到过
+当然还有一些小技巧，比如使用在 [main.go](./main.go) 中使用 Linux 管道来传递数据、同步消息，相关的技巧在作者之前的文章 [Linux 管道代码样例(一)](https://blog.schwarzeni.com/2019/12/22/Linux-%E7%AE%A1%E9%81%93%E4%BB%A3%E7%A0%81%E6%A0%B7%E4%BE%8B-%E4%B8%80/#Go%E8%AF%AD%E8%A8%80%E4%BD%BF%E7%94%A8%E7%AE%A1%E9%81%93) 中提到过。
+
+再比如如何使用 go 监听相关的 Linux 信号，比如 `SIGTERM`，在 [main.go](./main.go) 就实现了在 ctrl+c 退出的时候只需相关的清理函数，去除容器的相关配置，相关的技巧在作者之前的文章 [Golang优雅地结束server](https://blog.schwarzeni.com/2019/10/20/Golang%E4%BC%98%E9%9B%85%E5%9C%B0%E7%BB%93%E6%9D%9Fserver/#%E8%87%AA%E5%AE%9A%E4%B9%89%E4%BF%A1%E5%8F%B7%E9%87%8F%E7%9B%91%E5%90%AC%E5%99%A8) 提到过类似的实现。
