@@ -24,11 +24,19 @@ sudo ip netns exec ns1 ip route add default via 175.18.0.1 dev veth0
 sudo ip netns exec ns2 ip route add default via 175.18.0.1 dev veth0
 
 # iptables
+# for linux bridge
 iptables -t nat -A POSTROUTING -s ns_br ! -o ns_br -j MASQUERADE
-iptables -t nat -A PREROUTING -p tcp --dport 8088 -j DNAT --to 175.18.0.2:80
-iptables -t nat -A PREROUTING -p tcp --dport 8089 -j DNAT --to 175.18.0.3:80
 iptables -t filter -A FORWARD -i ns_br -o ns_br -j ACCEPT
 iptables -t filter -A FORWARD -i ns_br ! -o ns_br -j ACCEPT
+
+# for ns1
+iptables -t nat -A PREROUTING -p tcp --dport 8088 -j DNAT --to 175.18.0.2:80
+iptables -t nat -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -p tcp --dport 8088 -j DNAT --to-destination 175.18.0.2:80
 iptables -t filter -A FORWARD -d 175.18.0.2/32 ! -i ns_br -o ns_br -p tcp -m tcp --dport 80 -j ACCEPT
+
+# for ns2
+iptables -t nat -A PREROUTING -p tcp --dport 8089 -j DNAT --to 175.18.0.3:80
+iptables -t nat -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -p tcp --dport 8089 -j DNAT --to-destination 175.18.0.3:80
 iptables -t filter -A FORWARD -d 175.18.0.3/32 ! -i ns_br -o ns_br -p tcp -m tcp --dport 80 -j ACCEPT
+
 # optional for ping : iptables -t filter -A FORWARD -o ns_br -j ACCEPT

@@ -68,13 +68,15 @@ func setInterfaceUP(bridgeName string) (err error) {
 	return
 }
 
-// setupIPTables 配置 iptables 相关路由
+// setupIPTables 配置 iptables 相关路由 (设置网桥的相关路由)
+// ipRange 为网桥的ip地址，一般以 .1结尾
 func setupIPTables(bridgeName string, ipRange *net.IPNet, action iptablesAction) (err error) {
 	var iptablesCmds []string
+	_, ipnet, _ := net.ParseCIDR(ipRange.String())
 	// 配置 nat 表
 	iptablesCmds = append(iptablesCmds,
-		// iptables -t nat -A/D POSTROUTING -s <bridgeName> ! -o <bridgeName> -j MASQUERADE
-		fmt.Sprintf("-t nat %[2]s POSTROUTING -s %[1]s ! -o %[1]s -j MASQUERADE", bridgeName, action))
+		// iptables -t nat -A/D POSTROUTING -s <ip-range> ! -o <bridgeName> -j MASQUERADE
+		fmt.Sprintf("-t nat %[2]s POSTROUTING -s %[3]s ! -o %[1]s -j MASQUERADE", bridgeName, action, ipnet.String()))
 
 	// 配置 filter 表
 	iptablesCmds = append(iptablesCmds,
@@ -139,9 +141,13 @@ func configPortMapping(ep *EndPoint, cinfo *container.Info, action iptablesActio
 	for _, pm := range ep.PortMapping {
 		portMapping := strings.Split(pm, ":") // 默认合法
 		// -t nat -A PREROUTING -p tcp --dport 8088 -j DNAT --to 175.18.0.2:80
+		// -t nat -A POSTROUTING -s 175.18.0.2/32 -d 175.18.0.2/32 -p tcp -m tcp --dport 80 -j MASQUERADE
+		// -t nat -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -p tcp --dport 8085 -j DNAT --to-destination 175.22.0.2:80 本地端口转发，127.0.0.1 不能访问 ...
 		// -t filter -A FORWARD -d 175.18.0.2/32 ! -i ns_br -o ns_br -p tcp -m tcp --dport 80 -j ACCEPT
 		cmds := []string{
 			fmt.Sprintf("-t nat %s PREROUTING -p tcp --dport %s -j DNAT --to %s:%s", action, portMapping[0], ep.IPAddress.String(), portMapping[1]),
+			// fmt.Sprintf("-t nat %[1]s POSTROUTING -s %[2]s -d %[2]s -p tcp -m tcp --dport %[3]s -j MASQUERADE", action, ep.IPAddress.String(), portMapping[1]),
+			fmt.Sprintf("-t nat %s OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -p tcp --dport %s -j DNAT --to-destination %s:%s", action, portMapping[0], ep.IPAddress.String(), portMapping[1]),
 			// fmt.Sprintf("-t filter %s FORWARD -d %s ! -i %s -o %s -p tcp -m tcp --dport %s -j ACCEPT", action, ep.Network.IPRange.String(), ep.Network.Name, ep.Network.Name, portMapping[1])}
 			fmt.Sprintf("-t filter %s FORWARD -d %s ! -i %s -o %s -p tcp -m tcp --dport %s -j ACCEPT", action, ep.IPAddress.String(), ep.Network.Name, ep.Network.Name, portMapping[1])}
 

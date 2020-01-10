@@ -75,13 +75,16 @@ func main() {
 	// 从这里开始启动容器内的 web 服务
 	_ = w.Close()
 
+	log.Printf("start container[%s]:\n%v\n\nrun this command to enter container:\nnsenter --target %s --mount --uts --ipc --net --pid\n\n",
+		containerInfo.ID, containerInfo, containerInfo.PID)
+
 	// 处理退出的情况
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch,
 		os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 	select {
 	case <-ch:
-		fmt.Printf("[ID: %s]shutdown process %s ...", containerInfo.ID, containerInfo.PID)
+		fmt.Printf("\n[ID: %s]shutdown process %s, clear settings ...", containerInfo.ID, containerInfo.PID)
 		cnet.DisConnect(networkName, &containerInfo)
 	}
 

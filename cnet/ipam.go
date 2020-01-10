@@ -142,9 +142,10 @@ func (ipam *IPAM) dump() (err error) {
 			if err = os.MkdirAll(dir, 0644); err != nil {
 				return fmt.Errorf("create dir %s failed, %v", dir, err)
 			}
-			return nil
+			err = nil // FIXED: 修复此处的逻辑错错误
+		} else {
+			return err
 		}
-		return err
 	}
 	if subnetConfigFile, err = os.OpenFile(ipam.SubnetAllocatorPath, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644); err != nil {
 		return fmt.Errorf("open file %s failed, %v", ipam.SubnetAllocatorPath, err)
